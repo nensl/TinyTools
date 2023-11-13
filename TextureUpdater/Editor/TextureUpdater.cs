@@ -20,7 +20,10 @@ public class TextureUpdater : EditorWindow
     private string[] _resolutions = {"32", "64", "128", "256", "512", "1024", "2048", "4096", "8192"};
     private int _formatPopupIndex;
     private int _maxSizePopupIndex;
+    private int _limitSizePopupIndex;
     private bool _skipOverride;
+    private bool _overrideDefaultMaxSize;
+    private bool _limitMaxSize;
     private bool _initialized;
 
     // Progress
@@ -37,7 +40,7 @@ public class TextureUpdater : EditorWindow
     public static void ShowWindow()
     {
         EditorWindow window = GetWindow<TextureUpdater>("Texture Updater");
-        window.maxSize = new Vector2(400f, 400f);
+        window.maxSize = new Vector2(400f, 500f);
         window.minSize = window.maxSize;
     }
 
@@ -213,14 +216,25 @@ public class TextureUpdater : EditorWindow
             (TextureImporterFormat) Enum.Parse(typeof(TextureImporterFormat), enumDictionary.Values
                 .ToArray()[_formatPopupIndex]);
 
+        _overrideDefaultMaxSize = EditorGUILayout.Toggle("Override Default Max Size", _overrideDefaultMaxSize);
+        EditorGUI.BeginDisabledGroup(!_overrideDefaultMaxSize);
         _maxSizePopupIndex = EditorGUILayout.Popup("Max Size", _maxSizePopupIndex, _resolutions);
         _textureImporterSettings.maxTextureSize = int.Parse(_resolutions[_maxSizePopupIndex]);
+        EditorGUI.EndDisabledGroup();
+        
+        _limitMaxSize = EditorGUILayout.Toggle("Limit Max Size", _limitMaxSize);
+        EditorGUI.BeginDisabledGroup(!_limitMaxSize);
+        _limitSizePopupIndex = EditorGUILayout.Popup("Max Size", _limitSizePopupIndex, _resolutions);
+        _textureImporterSettings.maxTextureSize = int.Parse(_resolutions[_limitSizePopupIndex]);
+        EditorGUI.EndDisabledGroup();
 
         _textureImporterSettings.crunchedCompression = EditorGUILayout.Toggle("Crunch Compression",
             _textureImporterSettings.crunchedCompression);
 
+        EditorGUI.BeginDisabledGroup(!_textureImporterSettings.crunchedCompression);
         _textureImporterSettings.compressionQuality = EditorGUILayout.IntSlider("Compression Quality",
             _textureImporterSettings.compressionQuality, 0, 100);
+        EditorGUI.EndDisabledGroup();
     }
 
     private void RenderAdditionalOptions()
@@ -253,7 +267,7 @@ public class TextureUpdater : EditorWindow
 
         if (string.IsNullOrEmpty(platformString))
         {
-            Debug.LogError("Platform not yet supported. Ask Nenad.");
+            Debug.LogError("Platform not yet supported.");
             return;
         }
 
@@ -334,7 +348,10 @@ public class TextureUpdater : EditorWindow
 
                 platSettings.overridden = true;
                 platSettings.format = _textureImporterSettings.format;
-                platSettings.maxTextureSize = _textureImporterSettings.maxTextureSize;
+                if(_overrideDefaultMaxSize)
+                    platSettings.maxTextureSize = _textureImporterSettings.maxTextureSize;
+                if (_limitMaxSize && platSettings.maxTextureSize > int.Parse(_resolutions[_limitSizePopupIndex]))
+                    platSettings.maxTextureSize = int.Parse(_resolutions[_limitSizePopupIndex]);
                 platSettings.crunchedCompression = _textureImporterSettings.crunchedCompression;
                 platSettings.compressionQuality = _textureImporterSettings.compressionQuality;
 
@@ -367,10 +384,14 @@ public class TextureUpdater : EditorWindow
                 return "iPhone";
             case BuildTarget.Switch:
                 return "Switch";
-            case BuildTarget.XboxOne:
-                return "XboxOne";
+            case BuildTarget.GameCoreXboxOne:
+                return "GameCoreXboxOne";
+            case BuildTarget.GameCoreXboxSeries:
+                return "GameCoreXboxSeries";
             case BuildTarget.PS4:
                 return "PS4";
+            case BuildTarget.PS5:
+                return "PS5";
             case BuildTarget.tvOS:
                 return "tvOS";
             case BuildTarget.WebGL:
